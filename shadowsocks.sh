@@ -130,5 +130,3 @@ chmod +x ${STOP_SH}
 #修改文件属组
 chown -R ${USER}:${USER} /home/${USER}/software
 chown -R ${USER}:${USER} /home/${USER}/shadowsocks
-su ${USER}
-sh $START_SH
