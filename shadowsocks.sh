@@ -5,6 +5,8 @@ yum -y upgrade
 yum -y groupinstall "Development Libraries" 
 yum -y groupinstall "Development Tools"
 yum -y install epel-release 
+#安装jq
+yum -y install jq
 #安装ifconfig
 yum -y install net-tools.x86_64 
 #修改root禁止远程，关闭22端口登录
