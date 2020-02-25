@@ -120,9 +120,9 @@ START_SH=${SHADOW_HOME}/bin/start.sh
 echo -e '#!/bin/sh'                                >${START_SH}
 echo -e ''                                         >>${START_SH}
 echo -e 'basepath=$(cd `dirname $0`; pwd)'         >>${START_SH}
-echo -e 'HOST_IP="$(ifconfig| grep "broadcast"|awk "{ print $2}")"'>>${START_SH}
-echo -e 'NOW_IP = `cat ${basepath}/../conf/shadowsocks.json |jq ".server"`'>>${START_SH}
-echo -e 'sed -i "s/${NOW_IP}/${HOST_IP}" ${basepath}/../conf/shadowsocks.json'>>${START_SH}
+echo -e 'HOST_IP=\"$(ifconfig| grep 'broadcast'|awk '{ print $2}')\"'>>${START_SH}
+echo -e 'NOW_IP=`cat ${basepath}/../conf/shadowsocks.json |jq ".server"`'>>${START_SH}
+echo -e 'sed -i "s/${NOW_IP}/${HOST_IP}/g" ${basepath}/../conf/shadowsocks.json'>>${START_SH}
 echo -e 'nohup ssserver -c ${basepath}/../conf/shadowsocks.json >>${basepath}/../logs/ssserver.log 2>&1 & echo $! > ${basepath}/../pid/pid'  >>${START_SH} 
 chmod +x ${START_SH}
 STOP_SH=${SHADOW_HOME}/bin/stop.sh
