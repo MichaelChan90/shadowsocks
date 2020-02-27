@@ -63,7 +63,7 @@ yum -y install python-setuptools && easy_install pip
 pip install --upgrade pip
 echo "安装并配置shadowcoks================================================"
 #安装shadowsocks
-pip install shadowsocks
+pip install git+https://github.com/shadowsocks/shadowsocks.git@master
 #获取本机ip地址
 HOST_IP=$(ifconfig| grep "broadcast"|awk '{ print $2}')
 #创建shaodowsock目录结构
