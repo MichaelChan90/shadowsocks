@@ -67,17 +67,8 @@ tar -zxvf $SOFT_DIR/LATEST.tar.gz -C $SOFT_DIR/ && cd $SOFT_DIR/libsodium*
 echo /usr/local/lib > /etc/ld.so.conf.d/usr_local_lib.conf
 ldconfig
 
-
-
-echo "安装python========================================================="
-#安装pip
-yum -y install python-setuptools && easy_install pip
-#更新pip到最新版本
-pip install --upgrade pip
-echo "安装并配置shadowcoks================================================"
-#安装shadowsocks
-pip install git+https://github.com/shadowsocks/shadowsocks.git@master
-
+#安装shadowsocks-libev
+yum -y install shadowsocks-libev
 
 
 #获取本机ip地址
@@ -100,19 +91,11 @@ do
 	read -p "请重新输入shadowsocks开放端口以及密码（可多组参数[端口：密码;端口：密码]）: " PORT_PASS
 	PORT_PASS=${PORT_PASS//' '/''}
 done
-#打开系统端口
+
 PORTS=(${PORT_PASS//;/ })
-for PORT in ${PORTS[@]}
-do
-   PORT_PARAM=(${PORT//:/ })
-   firewall-cmd --zone=public --add-port=${PORT_PARAM[0]}/tcp --permanent
-done
-firewall-cmd --reload
-PORT_PASS=${PORT_PASS//:/'":"'}
-PORT_PASS=${PORT_PASS//;/'","'}
-PORT_PASS='"'${PORT_PASS}'"'
-ENCRYPT="xchacha20-ietf-poly1305|chacha20-ietf-poly1305|aes-256-gcm|aes-192-gcm|aes-128-gcm|rc4"
+
 #输入shadowsocks加密方式
+ENCRYPT="xchacha20-ietf-poly1305|chacha20-ietf-poly1305|aes-256-gcm|aes-192-gcm|aes-128-gcm|rc4"
 read -p "请输入shadowsocks加密方式[${ENCRYPT}]: " METHOD
 METHOD=${METHOD//' '/''}
 PATTERN="^(${ENCRYPT})$"
@@ -121,21 +104,32 @@ do
 	read -p "请重新输入shadowsocks加密方式[${ENCRYPT}]: " METHOD
 	METHOD=${METHOD//' '/''}
 done
-#配置shadowsocks配置文件
-CONF_FILE="$SHADOW_HOME/conf/shadowsocks.json"
-cat > ${CONF_FILE}<<EOF
+
+INDEX=0
+LEN=1
+for PORT in ${PORTS[@]}
+do
+	INDEX=$(expr $INDEX + $LEN)
+    PORT_PARAM=(${PORT//:/ })
+	#打开系统端口
+    firewall-cmd --zone=public --add-port=${PORT_PARAM[0]}/tcp --permanent
+	#配置shadowsocks配置文件
+	CONF_FILE="$SHADOW_HOME/conf/config_$INDEX.json"
+	cat > ${CONF_FILE}<<EOF
 {
     "server":"${HOST_IP}",
-    "local_address": "127.0.0.1",
     "local_port":1080,
-    "port_password":{
-    	${PORT_PASS}
-    },
+    "local_address": "0.0.0.0",
+    "server_port":${PORT_PARAM[0]},
+    "password":"${PORT_PARAM[1]}",
     "timeout":300,
     "method":"${METHOD}",
     "fast_open": false
 }
 EOF
+done
+firewall-cmd --reload
+
 
 #配置shadowsocks启动脚本
 START_SH=${SHADOW_HOME}/bin/startup.sh
@@ -144,25 +138,31 @@ cat > ${START_SH}<<EOF
 
 basepath=\$(cd \`dirname \$0\`; pwd)
 HOST_IP=\$(ifconfig| grep "broadcast"|awk '{print \$2}')
-NOW_IP=\`cat \${basepath}/../conf/shadowsocks.json |jq ".server"\`
-sed -i "s/\${NOW_IP}/\"\${HOST_IP}\"/g" \${basepath}/../conf/shadowsocks.json
-
-ssserver -c \${basepath}/../conf/shadowsocks.json --pid-file \${basepath}/../pid/pid --log-file \${basepath}/../logs/ssserver.log -d start
+files=\$(ls \${basepath}/../conf/config_*.json)
+for f in \${files[@]}
+do 
+	NOW_IP=\`cat \${f} |jq ".server"\`
+	sed -i 's/\${NOW_IP}/"\${HOST_IP}"/g' \${f}
+	fn=\${f##*/}
+	#ss-server -c \$f -f \${basepath}/../pid/\${fn%.*}.pid >> \${basepath}/../logs/\${fn%.*}.log 2>&1 & 
+	nohup ss-server -c \$f >> \${basepath}/../logs/\${fn%.*}.log 2>&1 & echo \$! > \${basepath}/../pid/\${fn%.*}.pid
+done
 
 EOF
-
-
 chmod +x ${START_SH}
 
 #配置服务停止脚本
-STOP_SH=${SHADOW_HOME}/bin/shutdown.sh
+STOP_SH=${SHADOW_HOME}/bin/shutdow.sh
 cat > ${STOP_SH}<<EOF
 #!/bin/sh
 
 basepath=\$(cd \`dirname \$0\`; pwd)
-pid=\`cat \${basepath}/../pid/pid\`
-kill -9 \${pid}
-
+files=\$(ls \${basepath}/../pid/*.pid)
+for f in \${files[@]}
+do 
+	pid=\`cat \$f\`
+	kill -9 \${pid}
+done
 EOF
 
 chmod +x ${STOP_SH}
