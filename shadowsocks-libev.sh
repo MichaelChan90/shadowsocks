@@ -23,6 +23,7 @@ if [ ! -z "${SSH_PORT}" ]; then
 	firewall-cmd --zone=public --add-port=${SSH_PORT}/tcp --permanent
 	firewall-cmd --reload
 fi
+semanage port -a -t ssh_port_t -p tcp ${SSH_PORT}
 service sshd restart
 
 #创建用户并设置密码
